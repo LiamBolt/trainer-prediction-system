@@ -1,33 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Crest } from '@/components/brand/Crest';
 import { CLASSIFICATION_LEFT, CLASSIFICATION_RIGHT, ORG_NAME } from '@/lib/constants';
+import heroImage from '@/assets/hero.png';
 
 /**
- * The shared landing / sign-in background (§13.1). One viewport, no scroll. Video
- * with a strict fallback chain — video → poster → navy gradient — so the page is
- * never blank even though the client's clip is still pending (§15). A mandatory
- * two-layer scrim keeps text AA-contrast over the brightest frame; reduced-motion
- * skips autoplay entirely.
+ * The shared landing / sign-in background (§13.1). One viewport, no scroll. A bundled
+ * hero image layered over a navy brand gradient, beneath a mandatory two-layer scrim
+ * that keeps text at AA contrast over the brightest pixels.
+ *
+ * The original design (§15) called for a hero *video* with a video → poster → gradient
+ * fallback chain. No video clip ships with the application, and referencing
+ * `/media/tps-hero.*` produced 404s on every load, so the still image + gradient — the
+ * end of that fallback chain — is used directly. `hero.png` is imported (not a public
+ * URL), so Vite fingerprints it into the bundle and it can never 404.
  */
-const HERO_WEBM = '/media/tps-hero.webm';
-const HERO_MP4 = '/media/tps-hero.mp4';
-const HERO_POSTER = '/media/hero-poster.jpg';
-
 export function AuthBackground({ children }: { children: React.ReactNode }) {
-  const [videoFailed, setVideoFailed] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
   // Lock body scroll for this route only (§13.1 / D4).
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    setReduceMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     return () => {
       document.body.style.overflow = prev;
     };
   }, []);
-
-  const showVideo = !reduceMotion && !videoFailed;
 
   return (
     <div className="relative h-dvh w-full overflow-hidden">
@@ -38,35 +33,16 @@ export function AuthBackground({ children }: { children: React.ReactNode }) {
         aria-hidden="true"
       />
 
-      {/* Poster (shown when reduced-motion or video fails). */}
-      {(reduceMotion || videoFailed) && (
-        <img
-          src={HERO_POSTER}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = 'none';
-          }}
-        />
-      )}
-
-      {/* Video */}
-      {showVideo && (
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          poster={HERO_POSTER}
-          onError={() => setVideoFailed(true)}
-          className="absolute inset-0 h-full w-full object-cover"
-        >
-          <source src={HERO_WEBM} type="video/webm" />
-          <source src={HERO_MP4} type="video/mp4" />
-        </video>
-      )}
+      {/* Bundled hero image (hashed asset, always present). */}
+      <img
+        src={heroImage}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover"
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).style.display = 'none';
+        }}
+      />
 
       {/* Scrim — linear wash + radial vignette (§13.1). */}
       <div

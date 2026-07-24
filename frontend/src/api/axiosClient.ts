@@ -10,8 +10,25 @@ import { mockAdapter } from './mockAdapter';
  */
 const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
+/**
+ * Normalise the API base URL so it ALWAYS targets the versioned API, regardless of
+ * how the deployment set VITE_API_URL. Endpoints are written as `/auth/login`,
+ * `/trainers`, … so the base must end in `/api/v1` (the backend serves the API there).
+ * This accepts any of:
+ *   https://host                 → https://host/api/v1
+ *   https://host/api             → https://host/api/v1
+ *   https://host/api/v1          → https://host/api/v1   (unchanged)
+ * and trims trailing slashes, so a missing or partial prefix can no longer 404 login.
+ */
+function resolveApiBaseUrl(): string {
+  const raw = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
+  if (raw.endsWith('/api/v1')) return raw;
+  if (raw.endsWith('/api')) return `${raw}/v1`;
+  return `${raw}/api/v1`;
+}
+
 export const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: resolveApiBaseUrl(),
   headers: { 'Content-Type': 'application/json' },
 });
 
