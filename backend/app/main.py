@@ -118,17 +118,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         "application_starting",
         version=settings.app_version,
         environment=settings.environment,
-        database_host=settings.postgres_host,
+        # The *effective* host, so a managed deploy (DATABASE_URL set) reports the real
+        # database rather than the unused POSTGRES_HOST default ("localhost"). Same
+        # reasoning as the seed banner and /health/ready detail.
+        database_host=settings.effective_db_host,
     )
 
     try:
         async with engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
-        logger.info("database_reachable", host=settings.postgres_host)
+        logger.info(
+            "database_reachable",
+            host=settings.effective_db_host,
+            ssl=settings.use_db_ssl,
+        )
     except Exception as exc:  # report and keep serving; see the docstring
         logger.error(
             "database_unreachable",
-            host=settings.postgres_host,
+            host=settings.effective_db_host,
             port=settings.postgres_port,
             error=type(exc).__name__,
             remedy=(
