@@ -7,6 +7,9 @@ node_modules/
 dist/
 dist-ssr/
 
+# graphify knowledge-graph artifacts (generated locally, not part of the app)
+graphify-out/
+
 # Environment files — never commit a real one; the *.example templates are kept.
 .env
 .env.*

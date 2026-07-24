@@ -177,19 +177,28 @@ release; it is commented out because pre-deploy commands are not available on th
 
 ---
 
-## Step 5 — Point the frontend at the API
+## Step 5 — The frontend (now part of the Blueprint)
 
-In the **frontend** repo (which stays where it is), set its API base URL to the Render
-service URL and rebuild/redeploy it. Typically a Vite env var:
+The frontend is a **second service** in `render.yaml` (`tps-frontend`, a static site
+built from `./frontend`). One Blueprint apply brings up both services — you do **not**
+deploy it from a separate repo. If your Render project shows only the backend, your
+Blueprint was created from an older `render.yaml`: push this one and **re-sync the
+Blueprint** (Render → your Blueprint → *Sync*), and Render will add the frontend service.
 
-```
-VITE_API_BASE_URL=https://<your-service>.onrender.com/api/v1
-VITE_USE_MOCKS=false
-```
+Two env values cross-reference the two services, so set them once after the first deploy:
 
-Then make sure Render's `CORS_ORIGINS` (step 4) is the frontend's real origin. If the
-browser console shows a CORS error, that value is wrong — it must match the frontend
-origin exactly, scheme included, no trailing slash.
+| Service | Key | Value |
+|---|---|---|
+| `tps-frontend` | `VITE_API_URL` | `https://<your-backend>.onrender.com/api/v1` — the backend's URL **plus `/api/v1`** |
+| `tps-backend` | `CORS_ORIGINS` | `https://<your-frontend>.onrender.com` — the frontend's exact origin, no trailing slash |
+
+`VITE_API_URL` is baked into the static bundle **at build time**, so after you set or
+change it you must trigger a **Manual Deploy → Clear build cache & deploy** on the
+frontend service for it to take effect. `VITE_USE_MOCKS=false` is already set in the
+blueprint, so the built app calls the real backend rather than its in-browser mocks.
+
+If the browser console shows a CORS error, `CORS_ORIGINS` does not exactly match the
+frontend origin (scheme included, no trailing slash, no wildcard).
 
 > Phase-3 frontend tasks still apply regardless of hosting: the demo password constant at
 > `frontend/src/hooks/useAuth.ts:16` must become `Tps@2026#Demo`, the four IDOR call

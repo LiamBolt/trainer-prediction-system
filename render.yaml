@@ -5,10 +5,10 @@
 # `frontend/`. Render reads it from the root and builds the backend from the
 # Dockerfile inside `backend/` (see dockerContext / dockerfilePath below).
 #
-# Only the BACKEND is declared here. The frontend is a static site built with
-# Vite; deploy it separately (Render Static Site, Vercel, Netlify, …) — it only
-# needs the backend URL. Keeping it out of the blueprint avoids Render trying to
-# run a Node build it does not need for the API service.
+# TWO services are declared: the backend (Docker web service) and the frontend
+# (static site built from ./frontend). One Blueprint apply brings up both. If you
+# only see the backend on Render, it is because an older render.yaml declared only
+# the backend — re-sync the Blueprint after pushing this file.
 #
 # The database is deliberately NOT declared here: it lives on Supabase, and its
 # connection string is a secret entered in the Render dashboard (see
@@ -75,3 +75,37 @@ services:
       - key: APP_VERSION
         value: "1.0.0"
       # Render injects RENDER_GIT_COMMIT automatically; config reads it for /version.
+
+  # ── Frontend: static site (React + Vite) ──────────────────────────────────
+  # Built from ./frontend and published as static files. THIS is the service whose
+  # absence meant "only the backend is running" — without it, the Blueprint hosts
+  # nothing but the API.
+  - type: web
+    name: tps-frontend
+    runtime: static
+    # Build from the frontend/ subdirectory; publish its dist/ output (repo-root
+    # relative, so it is unambiguous regardless of working-directory semantics).
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: frontend/dist
+    pullRequestPreviewsEnabled: false
+    # Single-page app: every path serves index.html so React Router handles routing
+    # client-side. Without this, refreshing /dashboard would 404.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # The backend's PUBLIC URL plus the API prefix. The app's axios baseURL is this
+      # value and endpoints are written as /auth/login, /trainers, … so it MUST end in
+      # /api/v1 (the backend serves the API there). Set in the dashboard to e.g.
+      # https://tps-backend.onrender.com/api/v1  — use YOUR backend's actual URL.
+      - key: VITE_API_URL
+        sync: false
+      # Live mode: call the real backend, not the in-browser mock adapter.
+      - key: VITE_USE_MOCKS
+        value: "false"
+      - key: VITE_APP_VERSION
+        value: "1.0.0"
+      # Vite 5 + this toolchain build cleanly on Node 20.
+      - key: NODE_VERSION
+        value: "20"
