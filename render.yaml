@@ -1,0 +1,77 @@
+# Render Blueprint — Trainer Prediction System.
+# https://render.com/docs/blueprint-spec
+#
+# This file lives at the REPOSITORY ROOT, one level above `backend/` and
+# `frontend/`. Render reads it from the root and builds the backend from the
+# Dockerfile inside `backend/` (see dockerContext / dockerfilePath below).
+#
+# Only the BACKEND is declared here. The frontend is a static site built with
+# Vite; deploy it separately (Render Static Site, Vercel, Netlify, …) — it only
+# needs the backend URL. Keeping it out of the blueprint avoids Render trying to
+# run a Node build it does not need for the API service.
+#
+# The database is deliberately NOT declared here: it lives on Supabase, and its
+# connection string is a secret entered in the Render dashboard (see
+# backend/DEPLOYMENT.md), never committed.
+#
+# What is safe to commit vs. what is a dashboard secret:
+#   generateValue: true  → Render mints a strong random value and stores it (JWT key)
+#   sync: false          → you type the value into the dashboard once; it never enters git
+#   value: ...           → plain configuration, safe in the open
+
+services:
+  - type: web
+    name: tps-backend
+    runtime: docker
+    # Paths are relative to this file (the repo root), so both point into backend/.
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free                    # bump to starter/standard for always-on + a shell
+    region: oregon                # pick the region nearest your Supabase project
+    healthCheckPath: /health/ready
+    # Migrations run once from your laptop against Supabase (backend/DEPLOYMENT.md),
+    # so nothing migrates on deploy by default — matching the "a human runs Alembic"
+    # rule (B12). On a paid instance you may instead uncomment this to migrate before
+    # each release:
+    # preDeployCommand: alembic upgrade head
+    envVars:
+      - key: ENVIRONMENT
+        value: production         # turns on the weak-JWT-secret refusal and prod error rendering
+
+      # The database. Paste your Supabase **Session pooler** URL here in the dashboard.
+      # It MUST be the pooler host (aws-0-<region>.pooler.supabase.com), NOT the direct
+      # db.<ref>.supabase.co host — the direct host is IPv6-only and Render cannot reach it.
+      - key: DATABASE_URL
+        sync: false
+
+      # Supabase's pooler presents a certificate signed by Supabase's own CA, which the
+      # system trust store does not carry — so a verifying TLS handshake fails with
+      # "self-signed certificate in certificate chain". This is exactly why Supabase's
+      # own connection strings use sslmode=require (encrypt, do not verify). The traffic
+      # is still encrypted; verification is off. To pin instead, add Supabase's CA cert
+      # and remove this — see backend/DEPLOYMENT.md.
+      - key: DB_SSL_INSECURE
+        value: "true"
+
+      # Render generates a strong signing key and keeps it. Never set this by hand and
+      # never commit one — a shared JWT key means every token in the system is forgeable.
+      - key: JWT_SECRET_KEY
+        generateValue: true
+
+      # The exact origin(s) the frontend is served from, comma-separated, no trailing
+      # slash, e.g. https://tps-frontend.onrender.com — never '*' (credentials forbid it).
+      - key: CORS_ORIGINS
+        sync: false
+
+      # Conservative pool for a managed database's connection budget. Supabase's free
+      # tier is generous through the pooler, but there is no reason to hold 30 connections.
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "5"
+
+      - key: LOG_LEVEL
+        value: INFO
+      - key: APP_VERSION
+        value: "1.0.0"
+      # Render injects RENDER_GIT_COMMIT automatically; config reads it for /version.

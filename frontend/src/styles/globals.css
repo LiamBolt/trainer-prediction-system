@@ -1,0 +1,227 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================================
+   TPS design tokens — §4.2 CSS variable architecture.
+   Surface/text/brand tokens are stored as space-separated RGB channels so
+   Tailwind's `rgb(var(--x) / <alpha-value>)` colours resolve with alpha.
+   Tokens that carry baked-in alpha (borders, glass, overlay) are full values.
+   ========================================================================= */
+
+:root {
+  /* --- surfaces (channels) --- */
+  --canvas: 246 246 249; /* #f6f6f9 */
+  --surface: 255 255 255; /* #ffffff */
+  --surface-raised: 255 255 255;
+  --surface-sunken: 236 235 240; /* #ecebf0 */
+
+  /* --- text (channels) --- */
+  --ink: 9 0 74; /* #09004a */
+  --text-secondary: 63 59 107; /* #3f3b6b */
+  --text-muted: 103 100 138; /* #67648a */
+  --text-disabled: 162 160 184; /* #a2a0b8 */
+
+  /* --- brand (channels) --- */
+  --brand: 25 21 78; /* #19154e */
+  --brand-hover: 38 33 92; /* #26215c */
+  --brand-fg: 255 255 255; /* #ffffff */
+
+  /* --- borders + effects (full values) --- */
+  --border-hairline: rgba(194, 193, 208, 0.7);
+  --border-strong: rgba(130, 128, 158, 0.55);
+  --focus-ring: #3f3b6b;
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(194, 193, 208, 0.7);
+  --overlay: rgba(9, 0, 74, 0.32);
+
+  /* --- semantic status (light) --- */
+  --success-fg: #0f7a4d;
+  --success-bg: #e8f6ef;
+  --success-border: #a7dcc4;
+  --warning-fg: #a15c07;
+  --warning-bg: #fdf3e3;
+  --warning-border: #f0d3a0;
+  --danger-fg: #b42318;
+  --danger-bg: #fdeceb;
+  --danger-border: #f3bdb8;
+  --info-fg: #1d4ed8;
+  --info-bg: #eaf0fe;
+  --info-border: #b6cbf8;
+
+  /* --- data-viz ramp (light: heaviest = darkest) --- */
+  --viz-1: #19154e;
+  --viz-2: #3f3b6b;
+  --viz-3: #534f7a;
+  --viz-4: #67648a;
+  --viz-5: #8684a2;
+
+  /* --- elevation (light) --- */
+  --shadow-e1: 0 1px 2px rgba(25, 21, 78, 0.06), 0 1px 3px rgba(25, 21, 78, 0.04);
+  --shadow-e2: 0 1px 3px rgba(25, 21, 78, 0.08), 0 8px 24px -12px rgba(25, 21, 78, 0.18);
+  --shadow-e3: 0 2px 6px rgba(25, 21, 78, 0.12), 0 12px 32px -12px rgba(25, 21, 78, 0.28);
+
+  /* glass blur values consumed by the .glass utility */
+  --glass-blur: 16px;
+  --glass-saturate: 120%;
+}
+
+.dark {
+  --canvas: 15 13 46; /* #0f0d2e — navy, never black */
+  --surface: 21 18 61; /* #15123d */
+  --surface-raised: 27 23 72; /* #1b1748 */
+  --surface-sunken: 11 9 34; /* #0b0922 */
+
+  --ink: 236 235 240; /* #ecebf0 */
+  --text-secondary: 194 193 208; /* #c2c1d0 */
+  --text-muted: 134 132 162; /* #8684a2 */
+  --text-disabled: 103 100 138; /* #67648a */
+
+  --brand: 83 79 122; /* #534f7a */
+  --brand-hover: 103 100 138; /* #67648a */
+  --brand-fg: 236 235 240; /* #ecebf0 */
+
+  --border-hairline: rgba(194, 193, 208, 0.14);
+  --border-strong: rgba(194, 193, 208, 0.24);
+  --focus-ring: #a2a0b8;
+  --glass-bg: rgba(21, 18, 61, 0.72);
+  --glass-border: rgba(194, 193, 208, 0.12);
+  --overlay: rgba(5, 4, 18, 0.64);
+
+  /* --- semantic status (dark) --- */
+  --success-fg: #34d399;
+  --success-bg: rgba(52, 211, 153, 0.12);
+  --success-border: rgba(52, 211, 153, 0.28);
+  --warning-fg: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.12);
+  --warning-border: rgba(251, 191, 36, 0.28);
+  --danger-fg: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.12);
+  --danger-border: rgba(248, 113, 113, 0.28);
+  --info-fg: #60a5fa;
+  --info-bg: rgba(96, 165, 250, 0.12);
+  --info-border: rgba(96, 165, 250, 0.28);
+
+  /* --- data-viz ramp (dark: heaviest = lightest) --- */
+  --viz-1: #ecebf0;
+  --viz-2: #c2c1d0;
+  --viz-3: #a2a0b8;
+  --viz-4: #8684a2;
+  --viz-5: #67648a;
+
+  /* --- elevation (dark): inset highlight + deep ambient, no noisy shadow --- */
+  --shadow-e1: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-e2: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 32px -12px rgba(0, 0, 0, 0.6);
+  --shadow-e3: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 16px 48px -16px rgba(0, 0, 0, 0.75);
+
+  --glass-blur: 20px;
+  --glass-saturate: 140%;
+}
+
+@layer base {
+  * {
+    border-color: var(--border-hairline);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    font-feature-settings: 'tnum' on; /* tabular-nums everywhere (§5.5) */
+    font-variant-numeric: tabular-nums;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-body text-ink antialiased;
+    font-variant-numeric: tabular-nums;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display text-ink;
+  }
+
+  /* One focus token, used everywhere (§5.6). */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgb(var(--brand) / 0.18);
+  }
+
+  /* Themed, unobtrusive scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /* Glass — allowed only in the seven places listed in §4.5. */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid var(--glass-border);
+  }
+
+  /* Readable fallback where backdrop-filter is unsupported (§4.5). */
+  @supports not (backdrop-filter: blur(1px)) {
+    .glass {
+      background: rgb(var(--surface) / 0.94);
+    }
+    :root .glass {
+      background: rgba(255, 255, 255, 0.94);
+    }
+    .dark .glass {
+      background: rgba(21, 18, 61, 0.94);
+    }
+  }
+
+  /* Numeric type helper. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Tear-off register rule used by the Decision Receipt (§12.7). */
+  .receipt-rule {
+    height: 1px;
+    background-image: linear-gradient(
+      to right,
+      var(--border-strong) 0,
+      var(--border-strong) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+    background-size: 8px 1px;
+    background-repeat: repeat-x;
+  }
+}
+
+/* Global reduced-motion guard (§4.6). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

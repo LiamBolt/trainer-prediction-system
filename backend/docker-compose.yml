@@ -1,0 +1,39 @@
+# The backend only. PostgreSQL runs natively on the Ubuntu host (B11) — see
+# §3 of 02-DATABASE-PROMPT.md for the host-side setup.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tps-backend:1.0.0
+    container_name: tps-backend
+    restart: unless-stopped
+    ports:
+      # Host port is configurable: another project may already own 8000. The
+      # container always listens on 8000 internally.
+      - "${API_PORT:-8000}:8000"
+    env_file: .env
+    environment:
+      # Overrides whatever .env says: from inside the container, the host database
+      # is never on localhost.
+      POSTGRES_HOST: host.docker.internal
+    extra_hosts:
+      # Required on Linux. Docker Desktop provides host.docker.internal
+      # automatically; Docker Engine on Linux does not, and without this line the
+      # name does not resolve at all.
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health/ready').status==200 else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

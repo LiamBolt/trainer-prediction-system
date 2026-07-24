@@ -1,0 +1,43 @@
+# ── Root .gitignore — Trainer Prediction System monorepo ────────────────────
+# This covers the repository ROOT. The subprojects keep their own rules, and git
+# honours them too:  backend/.gitignore  and  frontend/.gitignore.
+
+# Dependencies / build output that can appear at the root or anywhere
+node_modules/
+dist/
+dist-ssr/
+
+# Environment files — never commit a real one; the *.example templates are kept.
+.env
+.env.*
+!.env.example
+
+# Python tooling that may leak up to the root
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# ── Local working material — kept OUT of the deploy repo on purpose ─────────
+# Requirements source-of-truth, AI generation prompts, and large binaries. These
+# stay on your machine only; delete the lines below if you ever want them versioned.
+# (frontend/src/assets/*.png are app assets and are NOT covered — the PNG rule
+#  below is root-anchored with a leading slash.)
+/PROMPTS/
+/prompt.txt
+/tps-backend.txt
+/business_process_swimlane.png
+/TPS-SRS-PRESENTATION.pdf
+/trainer-prediction-system-SRS.pdf

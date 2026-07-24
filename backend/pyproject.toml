@@ -1,0 +1,102 @@
+[project]
+name = "tps-backend"
+version = "1.0.0"
+description = "Trainer Prediction System — Uganda Police Force. Persistence layer (Phase 1)."
+requires-python = ">=3.12"
+dependencies = [
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "argon2-cffi>=23.1.0",
+    "greenlet>=3.1.1",
+    "fastapi>=0.115.6",
+    "uvicorn[standard]>=0.34.0",
+    "pydantic[email]>=2.10.0",
+    "python-jose[cryptography]>=3.3.0",
+    "python-multipart>=0.0.20",
+    "structlog>=24.4.0",
+    "slowapi>=0.1.9",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.4",
+    "mypy>=1.14.0",
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.28.1",
+    "freezegun>=1.5.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+# ---------------------------------------------------------------------------
+# ruff — lint + format (replaces black/isort/flake8), per the knowledge base §1.
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "DTZ",  # flake8-datetimez — bans naive datetimes (D5)
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",  # line length is handled by the formatter
+    # The documentation in this codebase is deliberately typeset prose — en dashes in
+    # ranges ("0-100"), and the UPF's own names carry accented and typographic
+    # characters. These rules exist to catch homoglyph attacks in *identifiers*, which
+    # none of these are; enforcing them here would mean degrading the documentation.
+    "RUF001",  # ambiguous character in a string
+    "RUF002",  # ambiguous character in a docstring
+    "RUF003",  # ambiguous character in a comment
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Seed modules carry wide literal reference tables, which read better unwrapped.
+"data/seed_source/*" = ["E501"]
+"scripts/*" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ---------------------------------------------------------------------------
+# mypy — strict on the models package, per §9 of the database prompt.
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+plugins = []
+strict = true
+warn_unreachable = true
+show_error_codes = true
+exclude = ["migrations/versions/", "^build/"]
+
+[[tool.mypy.overrides]]
+# python-jose ships no type stubs and types-python-jose is unmaintained. The two
+# call sites are wrapped in typed helpers in app/core/security.py, so the untyped
+# boundary is one module wide rather than spread across the codebase.
+module = ["alembic.*", "asyncpg.*", "jose.*", "slowapi.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
