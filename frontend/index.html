@@ -2,7 +2,10 @@
 <html lang="en" class="">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/frontend/public/favicon.svg" />
+    <!-- public/ is served at the site root, so the path is /favicon.svg (NOT
+         /frontend/public/…). The ?v= is a cache-buster: browsers cache favicons
+         aggressively, so bump this number whenever you replace the icon. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#19154e" />
     <meta
