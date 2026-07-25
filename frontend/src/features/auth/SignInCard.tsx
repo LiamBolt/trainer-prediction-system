@@ -88,27 +88,37 @@ export function SignInCard({
 
   const onSubmit = form.handleSubmit(async (values) => {
     setServerError(null);
-    const result = await signIn(values.username, values.password);
-    switch (result.outcome) {
-      case 'SUCCESS':
-        onSuccess();
-        break;
-      case 'INVALID':
-        setServerError(
-          `Incorrect username or password. ${result.attemptsRemaining} attempt${
-            result.attemptsRemaining === 1 ? '' : 's'
-          } remaining before this account is locked.`,
-        );
-        triggerShake();
-        break;
-      case 'LOCKED':
-        writeLockout(values.username, result.unlockAt);
-        setLockedUntil(result.unlockAt);
-        break;
-      case 'DEACTIVATED':
-        setServerError('This account has been deactivated. Contact your System Administrator.');
-        triggerShake();
-        break;
+    try {
+      const result = await signIn(values.username, values.password);
+      switch (result.outcome) {
+        case 'SUCCESS':
+          onSuccess();
+          break;
+        case 'INVALID':
+          setServerError(
+            result.attemptsRemaining > 0
+              ? `Incorrect username or password. ${result.attemptsRemaining} attempt${
+                  result.attemptsRemaining === 1 ? '' : 's'
+                } remaining before this account is locked.`
+              : 'Incorrect username or password.',
+          );
+          triggerShake();
+          break;
+        case 'LOCKED':
+          writeLockout(values.username, result.unlockAt);
+          setLockedUntil(result.unlockAt);
+          break;
+        case 'DEACTIVATED':
+          setServerError('This account has been deactivated. Contact your System Administrator.');
+          triggerShake();
+          break;
+      }
+    } catch {
+      // 429 rate-limit, a network drop, or a 5xx — never leave the click unanswered.
+      setServerError(
+        'We could not sign you in just now — too many attempts or a connection problem. Please wait a moment and try again.',
+      );
+      triggerShake();
     }
   });
 

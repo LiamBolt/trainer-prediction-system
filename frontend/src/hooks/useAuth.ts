@@ -13,7 +13,9 @@ export const DEMO_ACCOUNTS: Record<RoleName, string> = {
   SYSTEM_ADMINISTRATOR: 'sysadmin',
 };
 
-export const DEMO_PASSWORD = 'Demo@2026';
+// Must match the backend seed's demo password (app/core/constants.py: DEMO_PASSWORD).
+// Used only by the mocks-only demo-account filler and role switcher (§8.9).
+export const DEMO_PASSWORD = 'Tps@2026#Demo';
 
 export function useAuth() {
   const navigate = useNavigate();

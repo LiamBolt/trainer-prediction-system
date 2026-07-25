@@ -39,11 +39,18 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-// On 401, clear auth and bounce to the sign-in screen with an expiry flag.
+// On 401, clear auth and bounce to the sign-in screen with an expiry flag — but ONLY
+// for a mid-session token expiry, never for the auth endpoints themselves. A 401 from
+// /auth/login is "wrong password" and must reach the sign-in form as INVALID; a 401
+// from /auth/refresh is a dead session the form handles directly. Treating those as an
+// expiry redirect would replace "Incorrect username or password" with a full-page
+// bounce to "Your session ended".
 client.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url ?? '';
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/refresh');
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       useAuthStore.getState().clear();
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/signin')) {
         window.location.assign('/signin?expired=1');
