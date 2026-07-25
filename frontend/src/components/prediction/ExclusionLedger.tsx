@@ -75,7 +75,15 @@ export function ExclusionLedger({ run }: { run: PredictionRun }) {
         />
       </button>
 
-      {open && (
+      {open && groups.length === 0 && (
+        <div className="border-t border-hairline px-4 py-4 md:px-6">
+          <p className="text-body-sm text-text-muted">
+            The per-trainer breakdown is not available for this run — only the totals above.
+          </p>
+        </div>
+      )}
+
+      {open && groups.length > 0 && (
         <div className="border-t border-hairline px-4 pb-2 md:px-6">
           <Accordion type="multiple">
             {groups.map((g) => (

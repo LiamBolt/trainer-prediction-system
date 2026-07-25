@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import {
   Button,
@@ -14,31 +14,41 @@ import {
   Tooltip,
   toast,
 } from '@/components/ui';
-import { programmesApi } from '@/api/endpoints';
-import { PROGRAMME_CATEGORIES, STATIONS } from '@/lib/constants';
+import { programmesApi, referenceApi } from '@/api/endpoints';
 import { programmeCreateSchema, type ProgrammeCreateForm } from '@/schemas/programme';
 
 /**
- * Create training request (FR-04). Single column, max-width 680px. Submit is
- * blocked without a category and at least one date; the disabled Submit tooltip
- * names what is missing. On success the flow continues to the requirements step.
+ * Create training request (FR-04). Category and location come from reference data and
+ * submit their numeric IDs (categoryId, stationId) — the backend keys on those, not
+ * on free-text names. On success the flow continues to the requirements step.
  */
 export function CreateProgrammePage() {
   const navigate = useNavigate();
+  const categories = useQuery({ queryKey: ['ref', 'categories'], queryFn: referenceApi.getCategories });
+  const stations = useQuery({ queryKey: ['ref', 'stations'], queryFn: referenceApi.getStations });
+
   const form = useForm<ProgrammeCreateForm>({
     resolver: zodResolver(programmeCreateSchema),
     mode: 'onBlur',
-    defaultValues: { title: '', category: '', startDate: '', endDate: '', location: '' },
+    defaultValues: { title: '', categoryId: '', startDate: '', endDate: '', stationId: '' },
   });
 
   const values = form.watch();
   const missing: string[] = [];
-  if (!values.category) missing.push('a category');
-  if (!values.startDate && !values.endDate) missing.push('at least one date');
+  if (!values.categoryId) missing.push('a category');
+  if (!values.startDate || !values.endDate) missing.push('both dates');
+  if (!values.stationId) missing.push('a location');
   const blocked = missing.length > 0;
 
   const mutation = useMutation({
-    mutationFn: (data: ProgrammeCreateForm) => programmesApi.createProgramme(data),
+    mutationFn: (data: ProgrammeCreateForm) =>
+      programmesApi.createProgramme({
+        title: data.title,
+        categoryId: Number(data.categoryId),
+        startDate: data.startDate,
+        endDate: data.endDate,
+        stationId: Number(data.stationId),
+      }),
     onSuccess: (programme) => {
       toast.success('Training request created', {
         description: 'Next, define the requirements so trainers can be matched.',
@@ -71,16 +81,16 @@ export function CreateProgrammePage() {
               />
             </FormField>
 
-            <FormField label="Category" required error={form.formState.errors.category?.message}>
+            <FormField label="Category" required error={form.formState.errors.categoryId?.message}>
               <Controller
                 control={form.control}
-                name="category"
+                name="categoryId"
                 render={({ field }) => (
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
-                    options={PROGRAMME_CATEGORIES.map((c) => ({ value: c, label: c }))}
-                    placeholder="Choose a category"
+                    options={(categories.data ?? []).map((c) => ({ value: String(c.categoryId), label: c.name }))}
+                    placeholder={categories.isLoading ? 'Loading…' : 'Choose a category'}
                   />
                 )}
               />
@@ -111,16 +121,16 @@ export function CreateProgrammePage() {
               </FormField>
             </div>
 
-            <FormField label="Location" required error={form.formState.errors.location?.message}>
+            <FormField label="Location" required error={form.formState.errors.stationId?.message}>
               <Controller
                 control={form.control}
-                name="location"
+                name="stationId"
                 render={({ field }) => (
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
-                    options={STATIONS.map((s) => ({ value: s.name, label: s.name }))}
-                    placeholder="Choose a location"
+                    options={(stations.data ?? []).map((s) => ({ value: String(s.stationId), label: s.name }))}
+                    placeholder={stations.isLoading ? 'Loading…' : 'Choose a location'}
                   />
                 )}
               />
@@ -128,7 +138,7 @@ export function CreateProgrammePage() {
 
             <div className="flex items-center gap-3 border-t border-hairline pt-5">
               {blocked ? (
-                <Tooltip content={`Add ${missing.join(' and ')} before submitting.`} onDisabled>
+                <Tooltip content={`Add ${missing.join(', ')} before submitting.`} onDisabled>
                   <Button type="submit" disabled>
                     Create request
                   </Button>

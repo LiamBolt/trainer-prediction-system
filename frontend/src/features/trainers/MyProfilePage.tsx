@@ -35,7 +35,7 @@ export function MyProfilePage() {
 
   const query = useQuery({
     queryKey: ['me', 'trainer', user?.userId],
-    queryFn: () => trainersApi.getMyTrainer(user!.userId),
+    queryFn: () => trainersApi.getMyTrainer(),
     enabled: Boolean(user),
   });
   const trainer = query.data;
@@ -54,7 +54,7 @@ export function MyProfilePage() {
 
   const mutation = useMutation({
     mutationFn: (data: TrainerProfileForm) =>
-      trainersApi.updateTrainer(trainer!.trainerId, {
+      trainersApi.updateMyProfile({
         policeRank: data.policeRank as PoliceRank,
         station: data.station,
         yearsExperience: Number(data.yearsExperience),

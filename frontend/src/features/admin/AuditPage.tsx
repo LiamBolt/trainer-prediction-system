@@ -48,7 +48,9 @@ export function AuditPage() {
       auditApi.listAudit({
         action: (action || undefined) as AuditAction | undefined,
         role: (role || undefined) as RoleName | undefined,
-        pageSize: 1000,
+        // The API caps page size at 100; asking for more is a 422. This shows the
+        // most recent 100 entries — add paging if a deeper history view is needed.
+        pageSize: 100,
       }),
   });
 

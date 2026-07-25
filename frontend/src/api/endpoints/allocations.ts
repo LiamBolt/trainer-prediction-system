@@ -1,4 +1,5 @@
 import { client } from '../axiosClient';
+import { toPaginated } from '../normalize';
 import type {
   AllocationFilters,
   AllocationListItem,
@@ -11,7 +12,7 @@ import type { Allocation } from '@/types/domain';
 export const listAllocations = (
   filters: AllocationFilters = {},
 ): Promise<Paginated<AllocationListItem>> =>
-  client.get('/allocations', { params: filters }).then((r) => r.data);
+  client.get('/allocations', { params: filters }).then((r) => toPaginated<AllocationListItem>(r.data));
 
 export const getAllocation = (allocationId: number): Promise<AllocationListItem> =>
   client.get(`/allocations/${allocationId}`).then((r) => r.data);

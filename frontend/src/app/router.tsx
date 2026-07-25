@@ -93,12 +93,22 @@ export const router = createBrowserRouter([
             ],
           },
 
-          // Evaluations
-          { path: 'evaluations', element: <EvaluationsPage /> },
-          { path: 'evaluations/new/:allocationId', element: <RecordEvaluationPage /> },
+          // Evaluations — Training Administrator only (matches the nav gating, so a
+          // direct URL from another role lands on /403 rather than a broken page).
+          {
+            element: <RoleGate roles={['TRAINING_ADMINISTRATOR']} />,
+            children: [
+              { path: 'evaluations', element: <EvaluationsPage /> },
+              { path: 'evaluations/new/:allocationId', element: <RecordEvaluationPage /> },
+            ],
+          },
 
-          // Reports
-          { path: 'reports', element: <ReportsPage /> },
+          // Reports — Training Administrator / System Administrator (the API allows
+          // both; officers/trainers are redirected to /403 instead of hitting a 403).
+          {
+            element: <RoleGate roles={['TRAINING_ADMINISTRATOR', 'SYSTEM_ADMINISTRATOR']} />,
+            children: [{ path: 'reports', element: <ReportsPage /> }],
+          },
 
           // Administration
           {

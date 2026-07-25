@@ -12,3 +12,4 @@ export * as usersApi from './users';
 export * as auditApi from './audit';
 export * as notificationsApi from './notifications';
 export * as policyApi from './policy';
+export * as referenceApi from './reference';

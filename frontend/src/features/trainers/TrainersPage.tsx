@@ -19,14 +19,9 @@ import {
   EmptyState,
 } from '@/components/ui';
 import { AvailabilityPill } from '@/components/prediction';
-import { trainersApi } from '@/api/endpoints';
+import { trainersApi, referenceApi } from '@/api/endpoints';
 import { useDebounce } from '@/hooks/useDebounce';
-import {
-  AVAILABILITY_LABELS,
-  PROFICIENCY_LABELS,
-  REGIONS,
-  SPECIALIZATIONS,
-} from '@/lib/constants';
+import { AVAILABILITY_LABELS, PROFICIENCY_LABELS } from '@/lib/constants';
 import { formatForceNumber } from '@/lib/format';
 import type { AvailabilityStatus, Trainer } from '@/types/domain';
 
@@ -40,11 +35,14 @@ export function TrainersPage() {
   const [view, setView] = useState<'table' | 'grid'>('table');
 
   const page = Number(params.get('page') ?? '1');
-  const specialization = params.get('specialization') ?? '';
-  const region = params.get('region') ?? '';
+  const specializationAreaId = params.get('specializationAreaId') ?? '';
+  const regionId = params.get('regionId') ?? '';
   const availability = params.get('availability') ?? '';
   const [searchInput, setSearchInput] = useState(params.get('q') ?? '');
   const search = useDebounce(searchInput, 300);
+
+  const specializations = useQuery({ queryKey: ['ref', 'specializations'], queryFn: referenceApi.getSpecializations });
+  const regions = useQuery({ queryKey: ['ref', 'regions'], queryFn: referenceApi.getRegions });
 
   const setParam = (key: string, value: string) => {
     setParams((prev) => {
@@ -57,13 +55,13 @@ export function TrainersPage() {
   };
 
   const query = useQuery({
-    queryKey: ['trainers', { search, specialization, region, availability, page }],
+    queryKey: ['trainers', { search, specializationAreaId, regionId, availability, page }],
     queryFn: () =>
       trainersApi.listTrainers({
         search: search || undefined,
-        specialization: specialization || undefined,
-        region: region || undefined,
-        availability: (availability || undefined) as AvailabilityStatus | undefined,
+        specializationAreaId: specializationAreaId ? Number(specializationAreaId) : undefined,
+        regionId: regionId ? Number(regionId) : undefined,
+        availabilityStatus: (availability || undefined) as AvailabilityStatus | undefined,
         page,
       }),
   });
@@ -96,18 +94,21 @@ export function TrainersPage() {
       col.accessor('specializations', {
         header: 'Specialisations',
         enableSorting: false,
-        cell: (c) => (
-          <span className="flex flex-wrap gap-1">
-            {c.getValue().slice(0, 2).map((s) => (
-              <Badge key={s.specializationId} tone="neutral" dot={false}>
-                {s.specializationArea}
-              </Badge>
-            ))}
-            {c.getValue().length > 2 && (
-              <span className="text-body-sm text-text-muted">+{c.getValue().length - 2}</span>
-            )}
-          </span>
-        ),
+        cell: (c) => {
+          const specs = c.getValue() ?? [];
+          return (
+            <span className="flex flex-wrap gap-1">
+              {specs.slice(0, 2).map((s) => (
+                <Badge key={s.specializationId} tone="neutral" dot={false}>
+                  {s.specializationArea}
+                </Badge>
+              ))}
+              {specs.length > 2 && (
+                <span className="text-body-sm text-text-muted">+{specs.length - 2}</span>
+              )}
+            </span>
+          );
+        },
       }),
       col.accessor('availabilityStatus', {
         header: 'Availability',
@@ -118,7 +119,7 @@ export function TrainersPage() {
   );
 
   const items = query.data?.items ?? [];
-  const hasFilters = Boolean(specialization || region || availability || search);
+  const hasFilters = Boolean(specializationAreaId || regionId || availability || search);
 
   return (
     <div className="flex flex-col gap-6">
@@ -160,19 +161,22 @@ export function TrainersPage() {
       >
         <div className="w-full sm:w-56">
           <Combobox
-            value={specialization}
-            onChange={(v) => setParam('specialization', v)}
-            options={SPECIALIZATIONS.map((s) => ({ value: s, label: s }))}
+            value={specializationAreaId}
+            onChange={(v) => setParam('specializationAreaId', v)}
+            options={(specializations.data ?? []).map((s) => ({
+              value: String(s.specializationAreaId),
+              label: s.name,
+            }))}
             placeholder="Specialisation"
           />
         </div>
         <div className="w-full sm:w-44">
           <Select
-            value={region}
-            onValueChange={(v) => setParam('region', v === 'all' ? '' : v)}
+            value={regionId}
+            onValueChange={(v) => setParam('regionId', v === 'all' ? '' : v)}
             options={[
               { value: 'all', label: 'All regions' },
-              ...REGIONS.map((r) => ({ value: r, label: r })),
+              ...(regions.data ?? []).map((r) => ({ value: String(r.regionId), label: r.name })),
             ]}
             placeholder="Region"
             aria-label="Filter by region"
@@ -234,7 +238,7 @@ export function TrainersPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {t.specializations.slice(0, 2).map((s) => (
+                      {(t.specializations ?? []).slice(0, 2).map((s) => (
                         <Badge key={s.specializationId} tone="neutral" dot={false}>
                           {s.specializationArea} · {PROFICIENCY_LABELS[s.proficiencyLevel]}
                         </Badge>

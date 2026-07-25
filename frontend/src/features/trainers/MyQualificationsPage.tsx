@@ -57,7 +57,7 @@ export function MyQualificationsPage() {
 
   const query = useQuery({
     queryKey: ['me', 'trainer', user?.userId],
-    queryFn: () => trainersApi.getMyTrainer(user!.userId),
+    queryFn: () => trainersApi.getMyTrainer(),
     enabled: Boolean(user),
   });
   const trainer = query.data;

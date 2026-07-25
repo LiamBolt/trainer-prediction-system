@@ -32,9 +32,37 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { rerank } from '@/lib/rerank';
 import { surname } from '@/lib/format';
-import type { Trainer } from '@/types/domain';
+import type { Prediction, Trainer } from '@/types/domain';
 
 const DISPLAY_LIMIT = 40;
+
+/**
+ * Build a display Trainer from a prediction row. Every ranked candidate carries its
+ * own identity (name, rank, force number, station) on the prediction, so the ranked
+ * list never depends on the trainer directory — which is capped at 100 rows and
+ * previously dropped every candidate beyond it.
+ */
+function synthTrainer(p: Prediction): Trainer {
+  return {
+    trainerId: p.trainerId,
+    userId: 0,
+    fullName: p.trainerName ?? `Trainer #${p.trainerId}`,
+    forceNumber: p.forceNumber ?? '',
+    policeRank: (p.trainerRank ?? 'IP') as Trainer['policeRank'],
+    station: p.station ?? '',
+    region: '',
+    directorate: '',
+    yearsExperience: 0,
+    availabilityStatus: 'AVAILABLE',
+    contactNumber: '',
+    qualifications: [],
+    specializations: [],
+    performanceHistory: [],
+    currentAllocations: 0,
+    lastAssignedDate: null,
+    profileCompleteness: 0,
+  };
+}
 
 export function PredictionPage() {
   const { id } = useParams();
@@ -68,15 +96,22 @@ export function PredictionPage() {
   });
   const trainersQuery = useQuery({
     queryKey: ['trainers', 'all'],
-    queryFn: () => trainersApi.listTrainers({ pageSize: 1000 }),
+    // The API caps page size at 100; 1000 is a 422. The ranked candidates come from
+    // the prediction run itself — this lookup only enriches rows with trainer detail.
+    queryFn: () => trainersApi.listTrainers({ pageSize: 100 }),
     staleTime: 60_000,
   });
 
   const trainerMap = useMemo(() => {
     const map = new Map<number, Trainer>();
-    trainersQuery.data?.items.forEach((t) => map.set(t.trainerId, t));
+    // Base every ranked candidate on its own prediction row (always complete)…
+    runQuery.data?.predictions.forEach((p) => map.set(p.trainerId, synthTrainer(p)));
+    // …then overlay richer directory detail (availability, region) where we have it.
+    trainersQuery.data?.items.forEach((t) =>
+      map.set(t.trainerId, { ...(map.get(t.trainerId) ?? ({} as Trainer)), ...t }),
+    );
     return map;
-  }, [trainersQuery.data]);
+  }, [runQuery.data, trainersQuery.data]);
 
   const run = runQuery.data;
   const reranked = useMemo(() => {
@@ -182,7 +217,8 @@ export function PredictionPage() {
       </Card>
     );
   }
-  if (runQuery.isLoading || trainersQuery.isLoading || !run || !reranked) {
+  // Do NOT block on the directory fetch — the ranked rows come from the run itself.
+  if (runQuery.isLoading || !run || !reranked) {
     return (
       <div className="flex min-h-panel flex-col items-center justify-center gap-4">
         <Spinner size={48} />

@@ -47,16 +47,17 @@ export type LoginResult =
 
 export interface ProgrammeCreateInput {
   title: string;
-  category: string;
+  categoryId: number;
   startDate: string;
   endDate: string;
-  location: string;
+  stationId: number;
+  expectedParticipants?: number;
 }
 
 export interface RequirementsInput {
-  requiredSpecialization: string;
+  requiredSpecializationAreaId: number;
   minimumExperience: number;
-  minimumQualification: QualificationLevel | null;
+  minimumQualificationLevelId: number | null;
 }
 
 export interface EligibilityPreview {
@@ -90,6 +91,28 @@ export interface UserCreateInput {
   fullName: string;
   email: string;
   role: RoleName;
+}
+
+/** Filters for the Users directory (FR-12). */
+export interface UserFilters {
+  search?: string;
+  role?: RoleName;
+  accountStatus?: AccountStatus;
+  page?: number;
+  pageSize?: number;
+}
+
+/** POST /users response — the account plus the ONE-TIME temporary password (§6.9). */
+export interface UserCreated {
+  user: User;
+  temporaryPassword: string;
+  message: string;
+}
+
+/** POST /users/{id}/reset-password response — a new one-time password (§6.10). */
+export interface PasswordReset {
+  temporaryPassword: string;
+  message: string;
 }
 
 export interface UserUpdateInput {
@@ -136,13 +159,14 @@ export interface ProgrammeFilters {
 
 export interface TrainerFilters {
   search?: string;
-  specialization?: string;
-  proficiency?: string;
-  station?: string;
-  region?: string;
-  availability?: AvailabilityStatus;
-  minYears?: number;
-  maxYears?: number;
+  // The API keys on reference IDs and camelCase status — NOT free-text names. Sending
+  // `specialization`/`region`/`availability` (names) was silently ignored → no filter.
+  specializationAreaId?: number;
+  stationId?: number;
+  regionId?: number;
+  availabilityStatus?: AvailabilityStatus;
+  minExperience?: number;
+  maxExperience?: number;
   page?: number;
   pageSize?: number;
 }

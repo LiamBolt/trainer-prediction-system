@@ -102,8 +102,10 @@ export interface TrainingProgramme {
   title: string;
   category: string;
   requiredSpecialization: string;
+  requiredSpecializationAreaId?: number | null;
   minimumExperience: number;
   minimumQualification: QualificationLevel | null;
+  minimumQualificationLevelId?: number | null;
   startDate: string;
   endDate: string;
   location: string;
@@ -140,6 +142,12 @@ export interface Prediction {
   predictionId: number;
   programmeId: number;
   trainerId: number;
+  // The ranked candidate's identity travels with the prediction row itself (the API
+  // includes it), so the ranked list never depends on a separate trainer lookup.
+  trainerName?: string;
+  trainerRank?: PoliceRank;
+  forceNumber?: string;
+  station?: string;
   predictionScore: number; // 0-100, one decimal
   confidenceLevel: number; // 0-100
   confidenceBand: ConfidenceBand;

@@ -46,7 +46,7 @@ export function MyAssignmentsPage() {
 
   const trainerQuery = useQuery({
     queryKey: ['me', 'trainer', user?.userId],
-    queryFn: () => trainersApi.getMyTrainer(user!.userId),
+    queryFn: () => trainersApi.getMyTrainer(),
     enabled: Boolean(user),
   });
   const trainerId = trainerQuery.data?.trainerId;

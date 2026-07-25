@@ -445,15 +445,14 @@ function listTrainers(f: TrainerFilters): Paginated<Trainer> {
     items = items.filter(
       (t) => t.fullName.toLowerCase().includes(search) || t.forceNumber.includes(search),
     );
-  if (str(f.specialization))
-    items = items.filter((t) => t.specializations.some((s) => s.specializationArea === f.specialization));
-  if (str(f.proficiency))
-    items = items.filter((t) => t.specializations.some((s) => s.proficiencyLevel === f.proficiency));
-  if (str(f.station)) items = items.filter((t) => t.station === f.station);
-  if (str(f.region)) items = items.filter((t) => t.region === f.region);
-  if (str(f.availability)) items = items.filter((t) => t.availabilityStatus === f.availability);
-  if (num(f.minYears) !== undefined) items = items.filter((t) => t.yearsExperience >= num(f.minYears)!);
-  if (num(f.maxYears) !== undefined) items = items.filter((t) => t.yearsExperience <= num(f.maxYears)!);
+  if (str(f.availabilityStatus))
+    items = items.filter((t) => t.availabilityStatus === f.availabilityStatus);
+  if (num(f.minExperience) !== undefined)
+    items = items.filter((t) => t.yearsExperience >= num(f.minExperience)!);
+  if (num(f.maxExperience) !== undefined)
+    items = items.filter((t) => t.yearsExperience <= num(f.maxExperience)!);
+  // specializationAreaId / regionId / stationId filtering runs against the real API;
+  // the mock dataset keys on names, so those filters are a no-op in mock mode.
   return paginate(items, num(f.page), num(f.pageSize) ?? 24);
 }
 
@@ -512,13 +511,13 @@ function createProgramme(input: ProgrammeCreateInput): TrainingProgramme {
   const programme: TrainingProgramme = {
     programmeId,
     title: input.title,
-    category: input.category,
+    category: `Category ${input.categoryId}`,
     requiredSpecialization: '',
     minimumExperience: 0,
     minimumQualification: null,
     startDate: input.startDate,
     endDate: input.endDate,
-    location: input.location,
+    location: `Station ${input.stationId}`,
     status: 'DRAFT',
     createdBy: officer.userId,
     createdByName: officer.fullName,
@@ -535,9 +534,11 @@ function setRequirements(programmeId: number, input: RequirementsInput): Trainin
   const p = programmeById(programmeId);
   if (!p) throw new ApiError(404, 'Programme not found');
   const alreadyPredicted = db.runs.some((r) => r.programmeId === programmeId);
-  p.requiredSpecialization = input.requiredSpecialization;
+  p.requiredSpecializationAreaId = input.requiredSpecializationAreaId;
+  p.requiredSpecialization = String(input.requiredSpecializationAreaId);
   p.minimumExperience = input.minimumExperience;
-  p.minimumQualification = input.minimumQualification;
+  p.minimumQualificationLevelId = input.minimumQualificationLevelId;
+  p.minimumQualification = null;
   p.requirementsSetAt = NOW().toISOString();
   if (p.status === 'DRAFT') p.status = 'REQUIREMENTS_SET';
   if (alreadyPredicted) p.requirementsChangedSincePrediction = true;

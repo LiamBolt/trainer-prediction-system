@@ -16,23 +16,24 @@ import {
   DotPulse,
   toast,
 } from '@/components/ui';
-import { programmesApi, predictionsApi } from '@/api/endpoints';
-import { useDebounce } from '@/hooks/useDebounce';
-import { QUALIFICATION_LABELS, QUALIFICATION_ORDER, SPECIALIZATIONS } from '@/lib/constants';
+import { programmesApi, predictionsApi, referenceApi } from '@/api/endpoints';
 import { formatCount } from '@/lib/format';
 import { requirementsSchema, type RequirementsForm } from '@/schemas/programme';
-import type { QualificationLevel } from '@/types/domain';
 
 /**
- * Define requirements (FR-05). A live eligibility preview shows how many trainers
- * currently meet the criteria and updates as fields change — the moment an Officer
- * learns their requirements are too narrow, BEFORE wasting a prediction run.
+ * Define requirements (FR-05). The specialisation and minimum qualification come from
+ * reference data and submit their numeric IDs (requiredSpecializationAreaId,
+ * minimumQualificationLevelId). The eligibility preview reflects the SAVED
+ * requirements — the API computes it server-side rather than from unsaved form values.
  */
 export function RequirementsPage() {
   const { id } = useParams();
   const programmeId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const specializations = useQuery({ queryKey: ['ref', 'specializations'], queryFn: referenceApi.getSpecializations });
+  const qualLevels = useQuery({ queryKey: ['ref', 'qualification-levels'], queryFn: referenceApi.getQualificationLevels });
 
   const programmeQuery = useQuery({
     queryKey: ['programme', programmeId],
@@ -45,32 +46,34 @@ export function RequirementsPage() {
     resolver: zodResolver(requirementsSchema),
     mode: 'onBlur',
     values: {
-      requiredSpecialization: programme?.requiredSpecialization ?? '',
+      requiredSpecializationAreaId: programme?.requiredSpecializationAreaId
+        ? String(programme.requiredSpecializationAreaId)
+        : '',
       minimumExperience: programme?.minimumExperience ?? 0,
-      minimumQualification: programme?.minimumQualification ?? null,
+      minimumQualificationLevelId: programme?.minimumQualificationLevelId
+        ? String(programme.minimumQualificationLevelId)
+        : null,
     },
   });
 
   const watched = form.watch();
-  const debounced = useDebounce(watched, 300);
 
+  // The API derives the preview from the SAVED requirements, so it is only meaningful
+  // once they exist — enable it when the loaded programme already has a specialisation.
   const eligibility = useQuery({
-    queryKey: ['eligibility', programmeId, debounced],
-    queryFn: () =>
-      programmesApi.getEligibility(programmeId, {
-        specialization: debounced.requiredSpecialization,
-        minExp: Number(debounced.minimumExperience) || 0,
-        minQual: debounced.minimumQualification,
-      }),
-    enabled: Number.isFinite(programmeId) && Boolean(debounced.requiredSpecialization),
+    queryKey: ['eligibility', programmeId],
+    queryFn: () => programmesApi.getEligibility(programmeId),
+    enabled: Number.isFinite(programmeId) && Boolean(programme?.requiredSpecializationAreaId),
   });
 
   const saveMutation = useMutation({
     mutationFn: (data: RequirementsForm) =>
       programmesApi.setRequirements(programmeId, {
-        requiredSpecialization: data.requiredSpecialization,
+        requiredSpecializationAreaId: Number(data.requiredSpecializationAreaId),
         minimumExperience: Number(data.minimumExperience),
-        minimumQualification: (data.minimumQualification || null) as QualificationLevel | null,
+        minimumQualificationLevelId: data.minimumQualificationLevelId
+          ? Number(data.minimumQualificationLevelId)
+          : null,
       }),
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['programme', programmeId] });
@@ -82,7 +85,7 @@ export function RequirementsPage() {
     onError: () => toast.error('Could not save the requirements. Please try again.'),
   });
 
-  const blocked = !watched.requiredSpecialization;
+  const blocked = !watched.requiredSpecializationAreaId;
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,18 +111,21 @@ export function RequirementsPage() {
               <FormField
                 label="Required specialisation"
                 required
-                error={form.formState.errors.requiredSpecialization?.message}
+                error={form.formState.errors.requiredSpecializationAreaId?.message}
                 help="Only trainers holding this specialisation will be ranked (BR-04)."
               >
                 <Controller
                   control={form.control}
-                  name="requiredSpecialization"
+                  name="requiredSpecializationAreaId"
                   render={({ field }) => (
                     <Combobox
                       value={field.value}
                       onChange={field.onChange}
-                      options={SPECIALIZATIONS.map((s) => ({ value: s, label: s }))}
-                      placeholder="Choose a specialisation"
+                      options={(specializations.data ?? []).map((s) => ({
+                        value: String(s.specializationAreaId),
+                        label: s.name,
+                      }))}
+                      placeholder={specializations.isLoading ? 'Loading…' : 'Choose a specialisation'}
                       searchPlaceholder="Search specialisations…"
                     />
                   )}
@@ -148,14 +154,14 @@ export function RequirementsPage() {
               <FormField label="Minimum qualification (optional)">
                 <Controller
                   control={form.control}
-                  name="minimumQualification"
+                  name="minimumQualificationLevelId"
                   render={({ field }) => (
                     <Select
                       value={field.value ?? 'any'}
                       onValueChange={(v) => field.onChange(v === 'any' ? null : v)}
                       options={[
                         { value: 'any', label: 'Any qualification' },
-                        ...QUALIFICATION_ORDER.map((q) => ({ value: q, label: QUALIFICATION_LABELS[q] })),
+                        ...(qualLevels.data ?? []).map((q) => ({ value: String(q.levelId), label: q.name })),
                       ]}
                     />
                   )}
@@ -182,7 +188,7 @@ export function RequirementsPage() {
           </CardBody>
         </Card>
 
-        {/* Live eligibility preview */}
+        {/* Eligibility preview — reflects the saved requirements */}
         <Card className="lg:sticky lg:top-6">
           <CardBody>
             <div className="flex flex-col gap-3">
@@ -190,9 +196,9 @@ export function RequirementsPage() {
                 <Users size={16} className="shrink-0" />
                 Eligibility preview
               </span>
-              {!watched.requiredSpecialization ? (
+              {!programme?.requiredSpecializationAreaId ? (
                 <p className="text-body-sm text-text-muted">
-                  Choose a specialisation to see how many trainers currently qualify.
+                  Save the requirements to see how many trainers currently qualify.
                 </p>
               ) : eligibility.isFetching ? (
                 <div className="flex items-center gap-2 text-text-muted">
