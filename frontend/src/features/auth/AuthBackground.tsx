@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Crest } from '@/components/brand/Crest';
 import { CLASSIFICATION_LEFT, CLASSIFICATION_RIGHT, ORG_NAME } from '@/lib/constants';
-import heroImage from '@/assets/hero.png';
+import heroImage from '@/assets/hero.jpg';
 
 /**
  * The shared landing / sign-in background (§13.1). One viewport, no scroll. A bundled
