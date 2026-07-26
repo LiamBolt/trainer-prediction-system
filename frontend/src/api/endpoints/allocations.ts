@@ -17,6 +17,17 @@ export const listAllocations = (
 export const getAllocation = (allocationId: number): Promise<AllocationListItem> =>
   client.get(`/allocations/${allocationId}`).then((r) => r.data);
 
+/**
+ * FR-09 — the signed-in trainer's own assignments, grouped server-side and scoped by
+ * the bearer token. A trainer must use THIS (not GET /allocations, which is
+ * Admin/Officer-only and 403s for a trainer).
+ */
+export const getMyAssignments = (): Promise<{
+  pending: AllocationListItem[];
+  upcoming: AllocationListItem[];
+  past: AllocationListItem[];
+}> => client.get('/trainers/me/assignments').then((r) => r.data);
+
 /** FR-08 — the explicit Administrator approval. */
 export const approveAllocation = (body: ApproveAllocationInput): Promise<Allocation> =>
   client.post('/allocations', body).then((r) => r.data);

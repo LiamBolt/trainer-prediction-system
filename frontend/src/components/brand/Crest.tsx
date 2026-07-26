@@ -20,7 +20,7 @@ export function Crest({ size = 32, className, title = 'Uganda Police Force' }: C
         width={size}
         height={size}
         alt={title}
-        className={cn('object-contain', className)}
+        className={cn('rounded-[20%] object-contain', className)}
       />
     );
   }

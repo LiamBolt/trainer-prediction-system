@@ -27,7 +27,7 @@ import {
   toast,
 } from '@/components/ui';
 import { RationaleCard } from '@/components/prediction';
-import { allocationsApi, trainersApi } from '@/api/endpoints';
+import { allocationsApi } from '@/api/endpoints';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDateRange } from '@/lib/format';
 import { declineSchema, type DeclineForm } from '@/schemas/evaluation';
@@ -44,17 +44,12 @@ export function MyAssignmentsPage() {
   const queryClient = useQueryClient();
   const [declining, setDeclining] = useState<AllocationListItem | null>(null);
 
-  const trainerQuery = useQuery({
-    queryKey: ['me', 'trainer', user?.userId],
-    queryFn: () => trainersApi.getMyTrainer(),
-    enabled: Boolean(user),
-  });
-  const trainerId = trainerQuery.data?.trainerId;
-
+  // A trainer reads their OWN assignments from the token-scoped endpoint. Using the
+  // Admin/Officer allocations list here 403'd for trainers — which broke this whole page.
   const allocationsQuery = useQuery({
-    queryKey: ['allocations', 'mine', trainerId],
-    queryFn: () => allocationsApi.listAllocations({ trainerId, pageSize: 100 }),
-    enabled: Boolean(trainerId),
+    queryKey: ['my-assignments'],
+    queryFn: () => allocationsApi.getMyAssignments(),
+    enabled: Boolean(user),
   });
 
   const form = useForm<DeclineForm>({
@@ -64,6 +59,7 @@ export function MyAssignmentsPage() {
   });
 
   const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['my-assignments'] });
     queryClient.invalidateQueries({ queryKey: ['allocations'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard'] });
   };
@@ -91,12 +87,12 @@ export function MyAssignmentsPage() {
     onError: () => toast.error('Could not decline the assignment. Please try again.'),
   });
 
-  const items = allocationsQuery.data?.items ?? [];
-  const pending = items.filter((a) => a.status === 'PENDING_TRAINER');
-  const upcoming = items.filter((a) => a.status === 'CONFIRMED');
-  const past = items.filter((a) => ['CONDUCTED', 'EVALUATED', 'DECLINED', 'WITHDRAWN'].includes(a.status));
+  // The endpoint returns the three groups already partitioned server-side.
+  const pending = allocationsQuery.data?.pending ?? [];
+  const upcoming = allocationsQuery.data?.upcoming ?? [];
+  const past = allocationsQuery.data?.past ?? [];
 
-  const isLoading = trainerQuery.isLoading || allocationsQuery.isLoading;
+  const isLoading = allocationsQuery.isLoading;
 
   return (
     <div className="flex flex-col gap-6">

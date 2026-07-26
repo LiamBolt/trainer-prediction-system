@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Crest } from '@/components/brand/Crest';
 import { CLASSIFICATION_LEFT, CLASSIFICATION_RIGHT, ORG_NAME } from '@/lib/constants';
 import heroImage from '@/assets/hero.jpg';
@@ -8,17 +8,19 @@ import heroImage from '@/assets/hero.jpg';
  * hero image layered over a navy brand gradient, beneath a mandatory two-layer scrim
  * that keeps text at AA contrast over the brightest pixels.
  *
- * The original design (§15) called for a hero *video* with a video → poster → gradient
- * fallback chain. No video clip ships with the application, and referencing
- * `/media/tps-hero.*` produced 404s on every load, so the still image + gradient — the
- * end of that fallback chain — is used directly. `hero.png` is imported (not a public
- * URL), so Vite fingerprints it into the bundle and it can never 404.
+ * The image is animated like a **hoisted flag on a windy day**: an SVG turbulence +
+ * displacement filter ripples the pixels (the field "breathes" and the amplitude
+ * pulses via SMIL), and a soft light band sweeps across for a shimmer. Both are
+ * disabled under `prefers-reduced-motion`, leaving the still image + gradient.
  */
 export function AuthBackground({ children }: { children: React.ReactNode }) {
-  // Lock body scroll for this route only (§13.1 / D4).
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  // Lock body scroll for this route only (§13.1 / D4); read the motion preference once.
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    setReduceMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     return () => {
       document.body.style.overflow = prev;
     };
@@ -26,6 +28,77 @@ export function AuthBackground({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative h-dvh w-full overflow-hidden">
+      {/* Scoped animation for the shimmer sweep. */}
+      <style>{`
+        @keyframes tps-flag-shimmer {
+          0%   { background-position: 160% 0; }
+          100% { background-position: -60% 0; }
+        }
+        .tps-flag-shimmer {
+          background: linear-gradient(105deg,
+            transparent 38%,
+            rgba(255,255,255,0.10) 46%,
+            rgba(255,255,255,0.26) 50%,
+            rgba(255,255,255,0.10) 54%,
+            transparent 62%);
+          background-size: 220% 100%;
+          mix-blend-mode: soft-light;
+          animation: tps-flag-shimmer 7.5s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .tps-flag-shimmer { animation: none; opacity: 0; }
+        }
+      `}</style>
+
+      {/* The waving-flag displacement filter (0×0, just a definition). */}
+      {!reduceMotion && (
+        <svg aria-hidden="true" width="0" height="0" className="absolute">
+          <filter
+            id="tps-flag"
+            x="-8%"
+            y="-8%"
+            width="116%"
+            height="116%"
+            colorInterpolationFilters="sRGB"
+          >
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.009 0.016"
+              numOctaves={2}
+              seed={8}
+              result="noise"
+            >
+              <animate
+                attributeName="baseFrequency"
+                dur="16s"
+                keyTimes="0;0.5;1"
+                values="0.009 0.016; 0.013 0.020; 0.009 0.016"
+                calcMode="spline"
+                keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
+                repeatCount="indefinite"
+              />
+            </feTurbulence>
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="noise"
+              scale="24"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            >
+              <animate
+                attributeName="scale"
+                dur="8s"
+                keyTimes="0;0.5;1"
+                values="16; 30; 16"
+                calcMode="spline"
+                keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
+                repeatCount="indefinite"
+              />
+            </feDisplacementMap>
+          </filter>
+        </svg>
+      )}
+
       {/* Base gradient — the ultimate fallback; never a blank rectangle. */}
       <div
         className="absolute inset-0"
@@ -33,16 +106,28 @@ export function AuthBackground({ children }: { children: React.ReactNode }) {
         aria-hidden="true"
       />
 
-      {/* Bundled hero image (hashed asset, always present). */}
+      {/* Bundled hero image (hashed asset). Rippled by the flag filter; scaled up a
+          touch so the displacement never pulls a transparent edge into view. */}
       <img
         src={heroImage}
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-cover will-change-transform"
+        style={
+          reduceMotion
+            ? undefined
+            : { filter: 'url(#tps-flag)', transform: 'scale(1.06)' }
+        }
         onError={(e) => {
           (e.currentTarget as HTMLImageElement).style.display = 'none';
         }}
       />
+
+      {/* Shimmer of light sweeping across, like sun catching a flag. Above the image,
+          below the scrim, so text contrast is preserved. */}
+      {!reduceMotion && (
+        <div className="tps-flag-shimmer pointer-events-none absolute inset-0" aria-hidden="true" />
+      )}
 
       {/* Scrim — linear wash + radial vignette (§13.1). */}
       <div
