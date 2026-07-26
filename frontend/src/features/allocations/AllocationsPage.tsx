@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
@@ -24,6 +24,7 @@ export function AllocationsPage() {
   const status = params.get('status') ?? '';
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
+  const [search, setSearch] = useState('');
 
   const setParam = (key: string, value: string) => {
     setParams((prev) => {
@@ -88,7 +89,10 @@ export function AllocationsPage() {
   );
 
   const items = query.data?.items ?? [];
-  const hasFilters = Boolean(status || from || to);
+  // Search by programme — filters the loaded allocations by title (case-insensitive).
+  const q = search.trim().toLowerCase();
+  const rows = q ? items.filter((a) => a.programmeTitle.toLowerCase().includes(q)) : items;
+  const hasFilters = Boolean(status || from || to || search);
 
   return (
     <div className="flex flex-col gap-6">
@@ -99,15 +103,21 @@ export function AllocationsPage() {
       />
 
       <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by programme…"
         hasActiveFilters={hasFilters}
-        onClear={() => setParams(new URLSearchParams())}
+        onClear={() => {
+          setSearch('');
+          setParams(new URLSearchParams());
+        }}
         actions={
           <Button
             variant="secondary"
             size="sm"
             icon={<Download size={16} className="shrink-0" />}
             onClick={() =>
-              downloadCsv('allocations', items, [
+              downloadCsv('allocations', rows, [
                 { key: 'registry', header: 'Registry No.', value: (a) => a.registryNumber },
                 { key: 'programme', header: 'Programme', value: (a) => a.programmeTitle },
                 { key: 'trainer', header: 'Trainer', value: (a) => `${a.trainerRank} ${a.trainerName}` },
@@ -149,7 +159,7 @@ export function AllocationsPage() {
 
       <DataTable
         columns={columns as never}
-        data={items}
+        data={rows}
         isLoading={query.isLoading}
         isError={query.isError}
         onRetry={() => query.refetch()}
@@ -161,7 +171,7 @@ export function AllocationsPage() {
         }}
       />
 
-      {query.data && query.data.pageCount > 1 && (
+      {!q && query.data && query.data.pageCount > 1 && (
         <Pagination
           page={query.data.page}
           pageCount={query.data.pageCount}
